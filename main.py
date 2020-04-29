@@ -90,6 +90,7 @@ def make_or_load_experiment(conf):
 
 def model(noised, netG, device):
 
+    netG.eval()
     noised = torch.from_numpy(noised.astype(np.float32)).clone()
     noised = noised.to(device)
     converted = netG(noised)
@@ -106,6 +107,7 @@ def train(conf):
     lr_g = conf['lr_g']
     lr_d = conf['lr_d']
     l1_ratio = conf['l1_ratio']
+    dropout_prob = conf['dropout_prob']
     save_interval = conf['save_interval']
     n_sample = conf['n_sample']
     n_overlap = conf['n_overlap']
@@ -148,7 +150,7 @@ def train(conf):
     torch.backends.cudnn.benchmark = True
 
     # set model
-    netG = Generator()
+    netG = Generator(dropout_prob)
     netG = netG.to(device)
     netD = Discriminator(n_sample)
     netD = netD.to(device)
@@ -184,6 +186,9 @@ def train(conf):
 
             for dl in progressbar(
                     train_loader, decostr='epoch {:03d}'.format(epoch)):
+
+                netG.train()
+                netD.train()
 
                 # set data
                 noised = dl['noised']
@@ -316,6 +321,8 @@ if __name__=='__main__':
             help='Learning rate of discriminator')
     parser.add_argument('--l1_ratio', type=float, default=1,
             help='Ratio of L1 norm for generator training')
+    parser.add_argument('--dropout_prob', type=float, default=0.1,
+            help='Probability of Dropout')
     parser.add_argument('--only_test', action='store_true',
             help='Can be used for only denoising from a trained model')
     parser.add_argument('--test_epoch', type=int, default=-1,

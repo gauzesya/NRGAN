@@ -70,7 +70,7 @@ class UpSample(nn.Module):
 
 class Generator(nn.Module):
 
-    def __init__(self):
+    def __init__(self, dropout_prob):
         super(Generator, self).__init__()
 
         self.ds1 = DownSample(1, 16)
@@ -85,7 +85,7 @@ class Generator(nn.Module):
         self.ds10 = DownSample(256, 512)
         self.ds11 = DownSample(512, 1024)
 
-        self.dropout = nn.Dropout(p=0.5)
+        self.dropout = nn.Dropout(dropout_prob)
 
         self.us1 = UpSample(1024, 512)
         self.us2 = UpSample(1024, 256)
