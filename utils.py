@@ -21,7 +21,3 @@ def read_label(label_path):
         abs_paths.append(str(abs_path))
 
     return abs_paths
-
-if __name__=='__main__':
-    print(read_label('data/label/train_denoise'))
-        

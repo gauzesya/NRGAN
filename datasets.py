@@ -189,15 +189,3 @@ class NoisedAndDenoiseAudioDataset(torch.utils.data.Dataset):
                     'noised': self._noised_chunks[self._noised_index][index]
                 }
         return items
-
-
-if __name__=='__main__':
-    from torch.utils.data import DataLoader
-    train_dataset = NoisedAndDenoiseAudioDataset(
-            'data/label/train_noised',
-            'data/label/train_denoise'
-            )
-
-    #train_dataset.save_denoised_wav(lambda x: x, 'test', decostr='denoised_')
-    train_dataset.shuffle_data()
-    dl = DataLoader(train_dataset, batch_size=8, num_workers=4, shuffle=True)

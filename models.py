@@ -193,27 +193,3 @@ class Discriminator(nn.Module):
         x = self.sigmoid(x)
 
         return x
-
-
-if __name__=='__main__':
-    from datasets import NoisedAndDenoiseAudioDataset
-    from torch.utils.data import DataLoader
-    train_dataset = NoisedAndDenoiseAudioDataset(
-            'data/label/train_noised',
-            'data/label/train_denoise'
-            )
-
-    dl = DataLoader(train_dataset, batch_size=1, num_workers=2, shuffle=True)
-
-    gen = Generator()
-    dis = Discriminator(16384)
-    for d in dl:
-        noised = d['noised']
-        denoise = d['denoise']
-
-        converted = gen(noised)
-        a = dis(noised)
-        print(a)
-        #print(converted)
-        quit()
-
