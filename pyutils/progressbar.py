@@ -1,20 +1,21 @@
 """Main module."""
 import time
 import shutil
+import copy
 
 
 class progressbar(object):
 
     def __init__(self, obj, width_proportion=1, decostr=None):
         assert(hasattr(obj, '__iter__'))
-        self._obj = list(obj)
+        self._obj = copy.deepcopy(obj)
         assert(width_proportion <= 1 and width_proportion > 0)
         self._width_proportion = width_proportion
         if decostr is not None:
             assert(type(decostr) is str)
         self._decostr = decostr
         self._i = 0
-        self._len = len(self._obj)
+        self._len = sum([1 for _ in obj])
 
 
     def __iter__(self):
@@ -25,7 +26,7 @@ class progressbar(object):
             print()
             raise StopIteration()
 
-        return_value = self._obj[self._i]
+        return_value = self._obj.__next__()
         self._i += 1
 
         # print progress bar
