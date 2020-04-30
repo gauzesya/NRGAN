@@ -10,7 +10,7 @@ class Flatten(nn.Module):
 
 class DownSample(nn.Module):
 
-    def __init__(self, n_in, n_out, relu='prelu', batchnorm=True):
+    def __init__(self, n_in, n_out, relu='prelu', batchnorm=True, dropout_prob=0.0):
         super(DownSample, self).__init__()
 
         assert(relu in ['relu', 'lrelu', 'prelu'])
@@ -27,6 +27,11 @@ class DownSample(nn.Module):
         else:
             self.bn = None
 
+        if dropout_prob != 0.0:
+            self.dropout = nn.Dropout(dropout_prob)
+        else:
+            self.dropout = None
+
 
     def forward(self, x):
         x = x.float()
@@ -34,6 +39,8 @@ class DownSample(nn.Module):
         if self.bn is not None:
             x = self.bn(x)
         x = self.activate_func(x)
+        if self.dropout is not None:
+            x = self.dropout(x)
 
         return x
 
@@ -70,7 +77,7 @@ class UpSample(nn.Module):
 
 class Generator(nn.Module):
 
-    def __init__(self, dropout_prob):
+    def __init__(self, dropout_prob=0.2):
         super(Generator, self).__init__()
 
         self.ds1 = DownSample(1, 16)
@@ -151,20 +158,20 @@ class Generator(nn.Module):
 
 class Discriminator(nn.Module):
 
-    def __init__(self, n_sample):
+    def __init__(self, n_sample, dropout_prob=0.5):
         super(Discriminator, self).__init__()
 
-        self.ds1 = DownSample(1, 16, relu='lrelu')
-        self.ds2 = DownSample(16, 32, relu='lrelu')
-        self.ds3 = DownSample(32, 32, relu='lrelu')
-        self.ds4 = DownSample(32, 64, relu='lrelu')
-        self.ds5 = DownSample(64, 64, relu='lrelu')
-        self.ds6 = DownSample(64, 128, relu='lrelu')
-        self.ds7 = DownSample(128, 128, relu='lrelu')
-        self.ds8 = DownSample(128, 256, relu='lrelu')
-        self.ds9 = DownSample(256, 256, relu='lrelu')
-        self.ds10 = DownSample(256, 512, relu='lrelu')
-        self.ds11 = DownSample(512, 1024, relu='lrelu')
+        self.ds1 = DownSample(1, 16, relu='lrelu', dropout_prob=dropout_prob)
+        self.ds2 = DownSample(16, 32, relu='lrelu', dropout_prob=dropout_prob)
+        self.ds3 = DownSample(32, 32, relu='lrelu', dropout_prob=dropout_prob)
+        self.ds4 = DownSample(32, 64, relu='lrelu', dropout_prob=dropout_prob)
+        self.ds5 = DownSample(64, 64, relu='lrelu', dropout_prob=dropout_prob)
+        self.ds6 = DownSample(64, 128, relu='lrelu', dropout_prob=dropout_prob)
+        self.ds7 = DownSample(128, 128, relu='lrelu', dropout_prob=dropout_prob)
+        self.ds8 = DownSample(128, 256, relu='lrelu', dropout_prob=dropout_prob)
+        self.ds9 = DownSample(256, 256, relu='lrelu', dropout_prob=dropout_prob)
+        self.ds10 = DownSample(256, 512, relu='lrelu', dropout_prob=dropout_prob)
+        self.ds11 = DownSample(512, 1024, relu='lrelu', dropout_prob=dropout_prob)
 
         self.flatten = Flatten()
         self.fc = nn.Linear(1024*int(n_sample/(2**11)), 1)
