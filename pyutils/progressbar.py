@@ -8,7 +8,7 @@ class progressbar(object):
 
     def __init__(self, obj, width_proportion=1, decostr=None):
         assert(hasattr(obj, '__iter__'))
-        self._obj = copy.deepcopy(obj)
+        self._obj = iter(copy.deepcopy(obj))
         assert(width_proportion <= 1 and width_proportion > 0)
         self._width_proportion = width_proportion
         if decostr is not None:
