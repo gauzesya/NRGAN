@@ -8,6 +8,7 @@ import torch.nn.functional as F
 
 import argparse
 import numpy as np
+import glob
 import os
 import json
 
@@ -18,74 +19,37 @@ from models import Generator, Discriminator
 from datasets import NoisedAndDenoiseAudioDataset
 
 
-def make_or_load_experiment(conf):
 
-    # set outputs dir and load pre-settings (if exist)
-    only_test = conf['only_test']
-    n_epochs = conf['n_epochs']
-    test_epoch = conf['test_epoch']
-    exp_dir = conf['exp_dir']
-    save_interval = conf['save_interval']
+def find_latest_exp(exp_dir):
 
-    model_dir = None
-    pre_results = None
-    saved_epochs = 0
+    dirs = glob.glob(os.path.join(exp_dir, 'epoch_*'))
+    latest_epoch = 0 
+    for d in dirs:
+        basename = os.path.basename(d)
+        epoch = int(basename[6:])
+        if epoch > latest_epoch:
+            latest_epoch = epoch
 
-    
-    if only_test is True:
-        if test_epoch==-1:
-            # load pre-results
-            with open(os.path.join(exp_dir, 'result.csv'), 'r') as f:
-                pre_results = f.readlines()
-            pre_num_epochs = len(pre_results) - 1
+    assert latest_epoch!=0, "Couldn't find saved model in {}".format(exp_dir)
 
-            # load pre-config
-            with open(os.path.join(exp_dir, 'config.json'), 'r') as f:
-                n_conf = json.load(f)
-            pre_interval = n_conf['save_interval']
-            if pre_num_epochs == n_conf['n_epochs']:
-                saved_epochs = pre_num_epochs
-            else:
-                saved_epochs = pre_num_epochs - (pre_num_epochs%pre_interval)
-            model_dir = os.path.join(exp_dir, 'epoch_{}'.format(saved_epochs))
-        else:
-            saved_epochs = test_epochs
-            model_dir = os.path.join(exp_dir, 'epoch_{}'.format(test_epochs))
+    return latest_epoch
 
-    else:
 
-        try:
-            os.makedirs(exp_dir)
-        except:
-            assert os.path.exists(os.path.join(exp_dir, 'result.csv')), '{} not have result.csv'.format(exp_dir)
-            # load pre-results
-            with open(os.path.join(exp_dir, 'result.csv'), 'r') as f:
-                pre_results = f.readlines()
-            pre_num_epochs = len(pre_results) - 1
-            assert(pre_num_epochs < n_epochs)
+def load_experiment(exp_dir, load_epochs):
 
-            # load pre-config
-            assert os.path.exists(os.path.join(exp_dir, 'config.json')), '{} not have config.json'.format(exp_dir)
-            with open(os.path.join(exp_dir, 'config.json'), 'r') as f:
-                conf = json.load(f)
-            pre_interval = conf['save_interval']
-            if pre_num_epochs == conf['n_epochs']:
-                saved_epochs = pre_num_epochs
-            else:
-                saved_epochs = pre_num_epochs - (pre_num_epochs%pre_interval)
-            pre_n_epochs = saved_epochs + 1
-            model_dir = os.path.join(exp_dir, 'epoch_{}'.format(saved_epochs))
-            results = pre_results[1:saved_epochs+1]
+    if load_epochs==-1:
+        load_epochs = find_latest_exp(exp_dir)
 
-            # update config
-            conf['n_epochs'] = n_epochs
-            conf['save_interval'] = save_interval
+    model_dir = os.path.join(exp_dir, 'epoch_{}'.format(load_epochs))
+    assert os.path.exists(model_dir), 'epoch_{0} not found in {1}'.format(load_epochs, exp_dir)
 
-            # log
-            print('data re-loaded from {}'.format(model_dir))
-            print('re-start training from {} epoch'.format(pre_n_epochs))
+    assert os.path.exists(os.path.join(exp_dir, 'result.csv')), '{} not have result.csv'.format(exp_dir)
 
-    return conf, model_dir, saved_epochs, pre_results
+    with open(os.path.join(exp_dir, 'result.csv'), 'r') as f:
+        pre_results = f.readlines()
+    pre_results = pre_results[:load_epochs]
+
+    return model_dir, load_epochs, pre_results
 
 
 def model(noised, netG, device):
@@ -112,12 +76,16 @@ def train(conf):
     save_interval = conf['save_interval']
     n_sample = conf['n_sample']
     n_overlap = conf['n_overlap']
+    load_epochs = conf['load_epochs']
 
     noised_label_tr = conf['noised_label_tr']
     denoise_label_tr = conf['denoise_label_tr']
     noised_label_te = conf['noised_label_te']
 
     exp_dir = conf['exp_dir']
+    out_dir = conf['out_dir']
+    if os.path.exists(out_dir):
+        assert exp_dir==out_dir, '{0} must be new directory or {1}'.format(out_dir, exp_dir)
 
     if noised_label_te is not None:
         is_testing = True
@@ -125,8 +93,18 @@ def train(conf):
         is_testing = False
 
     # load experiment (or make new experiment)
-    conf, model_dir, saved_epochs, pre_results = make_or_load_experiment(conf)
-    pre_n_epochs = saved_epochs + 1
+    if exp_dir is not None and os.path.exists(exp_dir):
+        model_dir, load_epochs, pre_results = load_experiment(exp_dir, load_epochs)
+        pre_n_epochs = load_epochs + 1
+        print('loaded experiment')
+        print('restart training from {} epoch'.format(pre_n_epochs))
+    else:
+        print('making new experiment')
+        model_dir = None
+        pre_n_epochs = 1
+        pre_results = None
+    os.makedirs(out_dir, exist_ok=True)
+         
 
 
     # load dataset
@@ -140,10 +118,12 @@ def train(conf):
                 noised_label_te,
                 None
                 )
+    print('dataset loaded')
     # data shuffle for making noised and denoise data unpair
     train_dataset.shuffle_data()
     # dataloader
     train_loader = DataLoader(train_dataset, batch_size=batchsize, num_workers=4, shuffle=True)
+    print('dataloader created')
 
     # device (cpu or cuda)
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -166,14 +146,17 @@ def train(conf):
         optG.load_state_dict(torch.load(os.path.join(model_dir, "optG.pt")))
         netD.load_state_dict(torch.load(os.path.join(model_dir, "netD.pt")))
         optD.load_state_dict(torch.load(os.path.join(model_dir, "optD.pt")))
+        print('model loaded from {}'.format(model_dir))
+    else:
+        print('new model created')
 
     # save config
     conf_json = json.dumps(conf, indent=2)
-    with open(os.path.join(exp_dir, 'config.json'), 'w') as f:
+    with open(os.path.join(out_dir, 'config.json'), 'w') as f:
         f.write(conf_json)
 
     # logger
-    with logger(os.path.join(exp_dir, 'result.csv')) as printl:
+    with logger(os.path.join(out_dir, 'result.csv')) as printl:
         printl('epoch, loss_D, loss_G, loss_L1', only_file=True)
         if pre_results is not None:
             for pr in pre_results:
@@ -236,7 +219,7 @@ def train(conf):
             if epoch%save_interval==0 or epoch==n_epochs:
 
                 # save model
-                save_dir = os.path.join(exp_dir, 'epoch_{}'.format(epoch))
+                save_dir = os.path.join(out_dir, 'epoch_{}'.format(epoch))
                 os.makedirs(save_dir)
                 torch.save(netG.state_dict(), os.path.join(save_dir, "netG.pt"))
                 torch.save(optG.state_dict(), os.path.join(save_dir, "optG.pt"))
@@ -256,14 +239,28 @@ def train(conf):
 
 def test(conf):
 
-    n_sample = conf['n_sample']
-    n_overlap = conf['n_overlap']
 
     noised_label_te = conf['noised_label_te']
 
+    load_epochs = conf['load_epochs']
+    n_test_data = conf['n_test_data']
+    is_shuffle_test = conf['is_shuffle_test']
+
+    exp_dir = conf['exp_dir']
+    test_out_dir = conf['test_out_dir']
+
+
     # load experiment
-    conf, model_dir, saved_epochs, pre_results = make_or_load_experiment(conf)
-    assert(model_dir is not None)
+    assert os.path.exists(exp_dir), '{} not exist'.format(exp_dir)
+    model_dir, load_epochs, pre_results = load_experiment(exp_dir, load_epochs)
+    with open(os.path.join(exp_dir, 'config.json'), 'r') as f:
+        conf = json.load(f)
+
+    # load previous conf
+    n_sample = conf['n_sample']
+    n_overlap = conf['n_overlap']
+    dropout_prob_g = conf['dropout_prob_g']
+    dropout_prob_d = conf['dropout_prob_d']
 
     # load dataset
     test_dataset = NoisedAndDenoiseAudioDataset(
@@ -277,23 +274,23 @@ def test(conf):
     torch.backends.cudnn.benchmark = True
 
     # set model
-    netG = Generator()
+    netG = Generator(dropout_prob_g)
     netG = netG.to(device)
-    netD = Discriminator(n_sample)
+    netD = Discriminator(n_sample, dropout_prob_d)
     netD = netD.to(device)
 
     # load models 
     netG.load_state_dict(torch.load(os.path.join(model_dir, "netG.pt")))
     netD.load_state_dict(torch.load(os.path.join(model_dir, "netD.pt")))
 
-    denoised_dir = conf['test_dir']
+    denoised_dir = test_out_dir
     os.makedirs(denoised_dir)
 
     test_dataset.save_denoised_wav(
             lambda x: model(x, netG, device),
             denoised_dir,
-            n_data=conf['n_test_data'],
-            is_shuffle=conf['is_shuffle_test']
+            n_data = n_test_data,
+            is_shuffle = is_shuffle_test
             )
 
 
@@ -328,8 +325,8 @@ if __name__=='__main__':
             help='Probability of Dropout Discriminator')
     parser.add_argument('--only_test', action='store_true',
             help='Can be used for only denoising from a trained model')
-    parser.add_argument('--test_epoch', type=int, default=-1,
-            help='Only testing: The model with the epoch is chosen for testing (-1 means the latest)')
+    parser.add_argument('--load_epochs', type=int, default=-1,
+            help='The model with the epoch is chosen for re-training (-1 means the latest)')
     parser.add_argument('--n_test_data', type=int, default=5,
             help='The number of wave file generated in the test')
     parser.add_argument('--is_shuffle_test', action='store_true',
@@ -348,10 +345,12 @@ if __name__=='__main__':
             help='The label path of noised data for testing')
 
     # For experiments
-    parser.add_argument('--exp_dir', type=str, default='exp',
-            help='The directry path that contains experiments (or empty dir)')
-    parser.add_argument('--test_dir', type=str, default='testdir',
-            help='Only testing: The directory of denoised wav')
+    parser.add_argument('--exp_dir', type=str, default=None,
+            help='The directory path that contains experiments')
+    parser.add_argument('--out_dir', type=str, default='exp',
+            help='The directory path for saving experiment (new directory or the same as exp_dir)')
+    parser.add_argument('--test_out_dir', type=str, default='testdir',
+            help='Only testing: The directory for saving denoised wav')
     parser.add_argument('--save_interval', type=int, default=10,
             help='The interval of epoch for saving and testing')
     args = parser.parse_args()
