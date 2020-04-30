@@ -47,7 +47,7 @@ def load_experiment(exp_dir, load_epochs):
 
     with open(os.path.join(exp_dir, 'result.csv'), 'r') as f:
         pre_results = f.readlines()
-    pre_results = pre_results[:load_epochs]
+    pre_results = pre_results[1:load_epochs+1]
 
     return model_dir, load_epochs, pre_results
 
