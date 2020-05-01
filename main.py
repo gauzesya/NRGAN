@@ -119,11 +119,6 @@ def train(conf):
                 None
                 )
     print('dataset loaded')
-    # data shuffle for making noised and denoise data unpair
-    train_dataset.shuffle_data()
-    # dataloader
-    train_loader = DataLoader(train_dataset, batch_size=batchsize, num_workers=4, shuffle=True)
-    print('dataloader created')
 
     # device (cpu or cuda)
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -164,6 +159,12 @@ def train(conf):
 
         for epoch in range(pre_n_epochs, n_epochs+1):
 
+            # data shuffle for making noised and denoise data unpair
+            train_dataset.shuffle_data()
+            # dataloader
+            train_loader = DataLoader(train_dataset, batch_size=batchsize, num_workers=4, shuffle=True)
+
+            # loss
             total_loss_D = 0.
             total_loss_G = 0.
             total_loss_L1 = 0.
