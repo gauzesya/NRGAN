@@ -1,6 +1,6 @@
 #!/bin/sh
 
-#<<TRAIN
+<<TRAIN
 python main.py \
   --n_epochs 50 \
   --batchsize 4 \
@@ -14,8 +14,9 @@ python main.py \
   --noised_label_te data/label/test_noised \
   --exp_dir exp \
   --out_dir exp \
-  --save_interval 5
-#TRAIN
+  --save_interval 5 \
+  --is_pair
+TRAIN
 
 <<RE_TRAIN
 python main.py \
@@ -32,7 +33,8 @@ python main.py \
   --load_epochs 5 \
   --exp_dir exp \
   --out_dir exp2 \
-  --save_interval 5
+  --save_interval 5 \
+  --is_pair
 RE_TRAIN
 
 <<TEST

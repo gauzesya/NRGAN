@@ -81,6 +81,7 @@ def train(conf):
     noised_label_tr = conf['noised_label_tr']
     denoise_label_tr = conf['denoise_label_tr']
     noised_label_te = conf['noised_label_te']
+    is_pair = conf['is_pair']
 
     exp_dir = conf['exp_dir']
     out_dir = conf['out_dir']
@@ -105,12 +106,11 @@ def train(conf):
         pre_results = None
     os.makedirs(out_dir, exist_ok=True)
          
-
-
     # load dataset
     train_dataset = NoisedAndDenoiseAudioDataset(
             noised_label_tr,
-            denoise_label_tr
+            denoise_label_tr,
+            is_pair=is_pair
             )
     data_num = len(train_dataset)
     if is_testing:
@@ -128,7 +128,7 @@ def train(conf):
     # set model
     netG = Generator(dropout_prob_g)
     netG = netG.to(device)
-    netD = Discriminator(n_sample, dropout_prob_d)
+    netD = Discriminator(n_sample, dropout_prob_d, is_pair)
     netD = netD.to(device)
 
     # create optimiser
@@ -184,8 +184,13 @@ def train(conf):
 
                 # Discriminator training
                 loss_D = 0.
-                fake_D = netD(netG(noised))
-                real_D = netD(denoise)
+                fake = netG(noised)
+                if is_pair:
+                    fake_D = netD(fake, noised)
+                    real_D = netD(fake, noised)
+                else:
+                    fake_D = netD(fake)
+                    real_D = netD(denoise)
                 loss_D += (fake_D**2).mean()
                 loss_D += ((real_D-1)**2).mean()
                 total_loss_D += loss_D.to('cpu').detach().numpy() * bs
@@ -195,7 +200,10 @@ def train(conf):
 
                 # Generator training
                 fake = netG(noised)
-                fake_D = netD(fake)
+                if is_pair:
+                    fake_D = netD(fake, noised)
+                else:
+                    fake_D = netD(fake)
                 loss_G = ((fake_D-1)**2).mean()
                 total_loss_G += loss_G.to('cpu').detach().numpy() * bs
                 loss_L1 = F.l1_loss(noised, fake).mean()
@@ -277,12 +285,9 @@ def test(conf):
     # set model
     netG = Generator(dropout_prob_g)
     netG = netG.to(device)
-    netD = Discriminator(n_sample, dropout_prob_d)
-    netD = netD.to(device)
 
     # load models 
     netG.load_state_dict(torch.load(os.path.join(model_dir, "netG.pt")))
-    netD.load_state_dict(torch.load(os.path.join(model_dir, "netD.pt")))
 
     denoised_dir = test_out_dir
     os.makedirs(denoised_dir)
@@ -344,6 +349,8 @@ if __name__=='__main__':
             help='The label path of denoised data for training')
     parser.add_argument('--noised_label_te', type=str, default=None,
             help='The label path of noised data for testing')
+    parser.add_argument('--is_pair', action='store_true',
+            help='Whether noised and denoise datasets are pair')
 
     # For experiments
     parser.add_argument('--exp_dir', type=str, default=None,

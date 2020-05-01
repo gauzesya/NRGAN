@@ -158,10 +158,13 @@ class Generator(nn.Module):
 
 class Discriminator(nn.Module):
 
-    def __init__(self, n_sample, dropout_prob=0.5):
+    def __init__(self, n_sample, dropout_prob=0.5, is_pair=False):
         super(Discriminator, self).__init__()
 
-        self.ds1 = DownSample(1, 16, relu='lrelu', dropout_prob=dropout_prob)
+        if is_pair:
+            self.ds1 = DownSample(2, 16, relu='lrelu', dropout_prob=dropout_prob)
+        else:
+            self.ds1 = DownSample(1, 16, relu='lrelu', dropout_prob=dropout_prob)
         self.ds2 = DownSample(16, 32, relu='lrelu', dropout_prob=dropout_prob)
         self.ds3 = DownSample(32, 32, relu='lrelu', dropout_prob=dropout_prob)
         self.ds4 = DownSample(32, 64, relu='lrelu', dropout_prob=dropout_prob)
@@ -177,9 +180,14 @@ class Discriminator(nn.Module):
         self.fc = nn.Linear(1024*int(n_sample/(2**11)), 1)
         self.sigmoid = nn.Sigmoid()
 
-    def forward(self, x):
-        x = x.float()
+    def forward(self, denoised, noised=None):
+        x = denoised.float()
         x = torch.unsqueeze(x, 1)
+        if noised is not None:
+            noised = noised.float()
+            noised = torch.unsqueeze(noised, 1)
+            x = torch.cat((x, noised), dim=1)
+            
 
         # down-sampling
         x = self.ds1(x)
