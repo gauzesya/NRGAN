@@ -29,16 +29,20 @@ class NoisedAndDenoiseAudioDataset(torch.utils.data.Dataset):
         self._fs = fs
         self._is_pair = is_pair
 
-        self._noised_data = self._make_data(noised_label)
+        self._noised_data, noised_max, noised_min = self._make_data(noised_label)
         self._noised_chunks = self._extract_chunks(
-                self._noised_data
+                self._noised_data,
+                noised_max,
+                noised_min
                 )
         self._noised_chunks_len = self._noised_chunks.shape[0]
 
         if denoise_label is not None:
-            self._denoise_data = self._make_data(denoise_label)
+            self._denoise_data, denoise_max, denoise_min = self._make_data(denoise_label)
             self._denoise_chunks = self._extract_chunks(
-                    self._denoise_data
+                    self._denoise_data,
+                    denoise_max,
+                    denoise_min
                     )
 
             if self._is_pair: # pair check
@@ -60,11 +64,16 @@ class NoisedAndDenoiseAudioDataset(torch.utils.data.Dataset):
 
         else:
             self._denoise_data = None
+            denoise_max = 0.0
+            denoise_min = 0.0
             self._denoise_chunks = None
             self._denoise_chunks_len = None
             self._chunks_len = self._noised_chunks_len
             self._noised_index = np.arange(self._chunks_len)
             self._denoise_index = None
+
+        self._norm_param = np.array([noised_max, noised_min, denoise_max, denoise_min])
+            
 
 
 
@@ -75,6 +84,10 @@ class NoisedAndDenoiseAudioDataset(torch.utils.data.Dataset):
                 self._denoise_index = self._noised_index
             else:
                 self._denoise_index = np.random.permutation(self._chunks_len) % self._denoise_chunks_len
+
+
+    def get_norm_param(self):
+        return self._norm_param
 
 
     def get_test_data_by_file(self, n_data=5, data_type='noised', is_shuffle=False):
@@ -103,7 +116,7 @@ class NoisedAndDenoiseAudioDataset(torch.utils.data.Dataset):
         return test_data
 
 
-    def save_denoised_wav(self, denoise_model, output_dir, n_data=5, is_shuffle=False, decostr=''):
+    def save_denoised_wav(self, denoise_model, output_dir, n_data=5, is_shuffle=False, decostr='', norm_param=None):
 
         # denoise_model is function that recieves `chuncks' and returns numpy array of the same size
         os.makedirs(output_dir, exist_ok=True)
@@ -111,6 +124,10 @@ class NoisedAndDenoiseAudioDataset(torch.utils.data.Dataset):
                 n_data=n_data,
                 data_type='noised',
                 is_shuffle=is_shuffle)
+        if norm_param is not None:
+            _, _, denoise_max, denoise_min = norm_param
+        else:
+            _, _, denoise_max, denoise_min = self._norm_param
 
         for td in test_data:
             name = td['name']
@@ -123,6 +140,7 @@ class NoisedAndDenoiseAudioDataset(torch.utils.data.Dataset):
             for dc in denoised_chunks:
                 denoised = denoised + list(dc)
             denoised = np.array(denoised[:wav_len])
+            denoised = self._de_norm(denoised, denoise_max, denoise_min) # denorm
             denoised = self._de_emphasis(denoised) # deemphasis
 
             output_path = os.path.join(output_dir, decostr+name)
@@ -134,12 +152,16 @@ class NoisedAndDenoiseAudioDataset(torch.utils.data.Dataset):
 
         paths = read_label(label)
         data = []
+        n_max = -np.inf
+        n_min = np.inf
         for fp in paths:
             basename = os.path.basename(fp)
             wav, fs = sf.read(fp)
             assert(self._fs==fs)
             wav = self._pre_emphasis(wav)
             wav_length = wav.shape[0]
+            n_max = np.max([n_max, np.max(wav)])
+            n_min = np.min([n_min, np.min(wav)])
 
             dd = {
                     'name': basename,
@@ -148,10 +170,21 @@ class NoisedAndDenoiseAudioDataset(torch.utils.data.Dataset):
                     }
             data.append(dd)
 
-        return data
+        return data, n_max, n_min
 
+    def _norm(self, chunks, n_max, n_min):
+        sa = (n_max + n_min) / 2
+        ma = (n_max - n_min) / 2
+        chunks = (chunks - sa) / ma * 0.99
+        return chunks
 
-    def _extract_chunks(self, data):
+    def _de_norm(self, chunks, n_max, n_min):
+        sa = (n_max + n_min) / 2
+        ma = (n_max - n_min) / 2
+        chunks = (chunks * ma / 0.99) + sa
+        return chunks
+
+    def _extract_chunks(self, data, n_max, n_min):
         chunks = []
 
         for d in data:
@@ -163,6 +196,7 @@ class NoisedAndDenoiseAudioDataset(torch.utils.data.Dataset):
             chunks = chunks + list(chunks_by_wav)
 
         chunks = np.array(chunks)
+        chunks = self._norm(chunks, n_max, n_min) # normalise in [-0.99, 0.99]
         return chunks
 
 

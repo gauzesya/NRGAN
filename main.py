@@ -113,6 +113,8 @@ def train(conf):
             is_pair=is_pair
             )
     data_num = len(train_dataset)
+    norm_param = train_dataset.get_norm_param()
+    np.save(os.path.join(out_dir, 'norm_param.npy'), norm_param)
     if is_testing:
         test_dataset = NoisedAndDenoiseAudioDataset(
                 noised_label_te,
@@ -128,7 +130,7 @@ def train(conf):
     # set model
     netG = Generator(dropout_prob_g)
     netG = netG.to(device)
-    netD = Discriminator(n_sample, dropout_prob_d, is_pair)
+    netD = Discriminator(n_sample, dropout_prob_d, is_pair=is_pair)
     netD = netD.to(device)
 
     # create optimiser
@@ -243,7 +245,8 @@ def train(conf):
                             lambda x: model(x, netG, device),
                             denoised_dir,
                             n_data=conf['n_test_data'],
-                            is_shuffle=conf['is_shuffle_test']
+                            is_shuffle=conf['is_shuffle_test'],
+                            norm_param=norm_param
                             )
 
 def test(conf):
@@ -264,6 +267,7 @@ def test(conf):
     model_dir, load_epochs, pre_results = load_experiment(exp_dir, load_epochs)
     with open(os.path.join(exp_dir, 'config.json'), 'r') as f:
         conf = json.load(f)
+    norm_param = np.load(os.path.join(exp_dir, 'norm_param.npy'))
 
     # load previous conf
     n_sample = conf['n_sample']
@@ -292,11 +296,19 @@ def test(conf):
     denoised_dir = test_out_dir
     os.makedirs(denoised_dir)
 
+    #test_dataset.save_denoised_wav(
+    #        lambda x: model(x, netG, device),
+    #        denoised_dir,
+    #        n_data = n_test_data,
+    #        is_shuffle = is_shuffle_test,
+    #        norm_param=norm_param
+    #        )
     test_dataset.save_denoised_wav(
-            lambda x: model(x, netG, device),
+            lambda x: x,
             denoised_dir,
             n_data = n_test_data,
-            is_shuffle = is_shuffle_test
+            is_shuffle = is_shuffle_test,
+            norm_param=norm_param
             )
 
 
