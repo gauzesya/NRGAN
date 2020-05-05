@@ -80,6 +80,7 @@ class Generator(nn.Module):
     def __init__(self, n_sample, batchnorm=False):
         super(Generator, self).__init__()
         self.n_sample = n_sample
+        self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
         self.ds1 = DownSample(1, 16, batchnorm=batchnorm)
         self.ds2 = DownSample(16, 32, batchnorm=batchnorm)
@@ -127,9 +128,9 @@ class Generator(nn.Module):
 
         # adding noise
         if self.training:
-            z = torch.randn(sc11.shape)
+            z = torch.randn(sc11.shape).to(self.device)
         else:
-            z = torch.zeros(sc11.shape)
+            z = torch.zeros(sc11.shape).to(self.device)
         x = torch.cat((sc11, z), dim=1)
 
         # up-sampling
