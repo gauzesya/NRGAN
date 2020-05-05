@@ -77,8 +77,9 @@ class UpSample(nn.Module):
 
 class Generator(nn.Module):
 
-    def __init__(self, dropout_prob=0.2, batchnorm=True):
+    def __init__(self, n_sample, batchnorm=False):
         super(Generator, self).__init__()
+        self.n_sample = n_sample
 
         self.ds1 = DownSample(1, 16, batchnorm=batchnorm)
         self.ds2 = DownSample(16, 32, batchnorm=batchnorm)
@@ -92,9 +93,8 @@ class Generator(nn.Module):
         self.ds10 = DownSample(256, 512, batchnorm=batchnorm)
         self.ds11 = DownSample(512, 1024, batchnorm=batchnorm)
 
-        self.dropout = nn.Dropout(dropout_prob)
 
-        self.us1 = UpSample(1024, 512, batchnorm=batchnorm)
+        self.us1 = UpSample(2048, 512, batchnorm=batchnorm)
         self.us2 = UpSample(1024, 256, batchnorm=batchnorm)
         self.us3 = UpSample(512, 256, batchnorm=batchnorm)
         self.us4 = UpSample(512, 128, batchnorm=batchnorm)
@@ -125,7 +125,12 @@ class Generator(nn.Module):
         sc10 = self.ds10(sc9)
         sc11 = self.ds11(sc10)
 
-        x = self.dropout(sc11)
+        # adding noise
+        if self.training:
+            z = torch.randn(sc11.shape)
+        else:
+            z = torch.zeros(sc11.shape)
+        x = torch.cat((sc11, z), dim=1)
 
         # up-sampling
         x = self.us1(x)
@@ -158,23 +163,23 @@ class Generator(nn.Module):
 
 class Discriminator(nn.Module):
 
-    def __init__(self, n_sample, dropout_prob=0.5, batchnorm=True, is_pair=False):
+    def __init__(self, n_sample, is_pair=False, batchnorm=True,):
         super(Discriminator, self).__init__()
 
         if is_pair:
-            self.ds1 = DownSample(2, 16, relu='lrelu', dropout_prob=dropout_prob, batchnorm=batchnorm)
+            self.ds1 = DownSample(2, 16, relu='lrelu',batchnorm=batchnorm)
         else:
-            self.ds1 = DownSample(1, 16, relu='lrelu', dropout_prob=dropout_prob, batchnorm=batchnorm)
-        self.ds2 = DownSample(16, 32, relu='lrelu', dropout_prob=dropout_prob, batchnorm=batchnorm)
-        self.ds3 = DownSample(32, 32, relu='lrelu', dropout_prob=dropout_prob, batchnorm=batchnorm)
-        self.ds4 = DownSample(32, 64, relu='lrelu', dropout_prob=dropout_prob, batchnorm=batchnorm)
-        self.ds5 = DownSample(64, 64, relu='lrelu', dropout_prob=dropout_prob, batchnorm=batchnorm)
-        self.ds6 = DownSample(64, 128, relu='lrelu', dropout_prob=dropout_prob, batchnorm=batchnorm)
-        self.ds7 = DownSample(128, 128, relu='lrelu', dropout_prob=dropout_prob, batchnorm=batchnorm)
-        self.ds8 = DownSample(128, 256, relu='lrelu', dropout_prob=dropout_prob, batchnorm=batchnorm)
-        self.ds9 = DownSample(256, 256, relu='lrelu', dropout_prob=dropout_prob, batchnorm=batchnorm)
-        self.ds10 = DownSample(256, 512, relu='lrelu', dropout_prob=dropout_prob, batchnorm=batchnorm)
-        self.ds11 = DownSample(512, 1024, relu='lrelu', dropout_prob=dropout_prob, batchnorm=batchnorm)
+            self.ds1 = DownSample(1, 16, relu='lrelu', batchnorm=batchnorm)
+        self.ds2 = DownSample(16, 32, relu='lrelu', batchnorm=batchnorm)
+        self.ds3 = DownSample(32, 32, relu='lrelu', batchnorm=batchnorm)
+        self.ds4 = DownSample(32, 64, relu='lrelu', batchnorm=batchnorm)
+        self.ds5 = DownSample(64, 64, relu='lrelu', batchnorm=batchnorm)
+        self.ds6 = DownSample(64, 128, relu='lrelu', batchnorm=batchnorm)
+        self.ds7 = DownSample(128, 128, relu='lrelu', batchnorm=batchnorm)
+        self.ds8 = DownSample(128, 256, relu='lrelu', batchnorm=batchnorm)
+        self.ds9 = DownSample(256, 256, relu='lrelu', batchnorm=batchnorm)
+        self.ds10 = DownSample(256, 512, relu='lrelu', batchnorm=batchnorm)
+        self.ds11 = DownSample(512, 1024, relu='lrelu', batchnorm=batchnorm)
 
         self.flatten = Flatten()
         self.fc = nn.Linear(1024*int(n_sample/(2**11)), 1)

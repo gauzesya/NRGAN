@@ -71,8 +71,6 @@ def train(conf):
     lr_g = conf['lr_g']
     lr_d = conf['lr_d']
     l1_ratio = conf['l1_ratio']
-    dropout_prob_g = conf['dropout_prob_g']
-    dropout_prob_d = conf['dropout_prob_d']
     save_interval = conf['save_interval']
     n_sample = conf['n_sample']
     n_overlap = conf['n_overlap']
@@ -128,9 +126,9 @@ def train(conf):
     torch.backends.cudnn.benchmark = True
 
     # set model
-    netG = Generator(dropout_prob_g)
+    netG = Generator(n_sample, batchnorm=False)
     netG = netG.to(device)
-    netD = Discriminator(n_sample, dropout_prob_d, is_pair=is_pair)
+    netD = Discriminator(n_sample, is_pair=is_pair, batchnorm=True)
     netD = netD.to(device)
 
     # create optimiser
@@ -337,10 +335,6 @@ if __name__=='__main__':
             help='Learning rate of discriminator')
     parser.add_argument('--l1_ratio', type=float, default=1,
             help='Ratio of L1 norm for generator training')
-    parser.add_argument('--dropout_prob_g', type=float, default=0.1,
-            help='Probability of Dropout in Generator')
-    parser.add_argument('--dropout_prob_d', type=float, default=0.5,
-            help='Probability of Dropout Discriminator')
     parser.add_argument('--only_test', action='store_true',
             help='Can be used for only denoising from a trained model')
     parser.add_argument('--load_epochs', type=int, default=-1,
