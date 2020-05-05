@@ -191,8 +191,8 @@ def train(conf):
                 else:
                     fake_D = netD(fake)
                     real_D = netD(denoise)
-                loss_D += (fake_D**2).mean()
-                loss_D += ((real_D-1)**2).mean()
+                loss_D += (fake_D**2).mean() / 2
+                loss_D += ((real_D-1)**2).mean() / 2
                 total_loss_D += loss_D.to('cpu').detach().numpy() * bs
                 netD.zero_grad()
                 loss_D.backward()
@@ -204,7 +204,7 @@ def train(conf):
                     fake_D = netD(fake, noised)
                 else:
                     fake_D = netD(fake)
-                loss_G = ((fake_D-1)**2).mean()
+                loss_G = ((fake_D-1)**2).mean() / 2
                 total_loss_G += loss_G.to('cpu').detach().numpy() * bs
                 loss_L1 = F.l1_loss(noised, fake).mean()
                 total_loss_L1 += loss_L1.to('cpu').detach().numpy() * bs
@@ -214,7 +214,7 @@ def train(conf):
                 (loss_G + loss_L1).backward()
                 optG.step()
 
-            # compute mean loss nad print
+            # compute mean loss and print
             total_loss_D /= data_num
             total_loss_G /= data_num
             total_loss_L1 /= data_num
@@ -235,6 +235,7 @@ def train(conf):
                 torch.save(netD.state_dict(), os.path.join(save_dir, "netD.pt"))
                 torch.save(optD.state_dict(), os.path.join(save_dir, "optD.pt"))
 
+                # generate test waveform
                 if is_testing:
                     denoised_dir = os.path.join(save_dir, 'denoised')
                     os.makedirs(denoised_dir)
@@ -294,19 +295,13 @@ def test(conf):
     denoised_dir = test_out_dir
     os.makedirs(denoised_dir)
 
-    #test_dataset.save_denoised_wav(
-    #        lambda x: model(x, netG, device),
-    #        denoised_dir,
-    #        n_data = n_test_data,
-    #        is_shuffle = is_shuffle_test,
-    #        norm_param=norm_param
-    #        )
+    # generate test waveform
     test_dataset.save_denoised_wav(
-            lambda x: x,
+            lambda x: model(x, netG, device),
             denoised_dir,
             n_data = n_test_data,
             is_shuffle = is_shuffle_test,
-            norm_param=norm_param
+            norm_param = norm_param
             )
 
 
