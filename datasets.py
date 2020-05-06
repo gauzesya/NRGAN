@@ -233,7 +233,7 @@ class NoisedAndDenoiseAudioDataset(torch.utils.data.Dataset):
 
 
     def __getitem__(self, index):
-        if self._denoise_data is not None:
+        if self._denoise_chunks is not None:
             items = {
                     'noised': self._noised_chunks[self._noised_index][index],
                     'denoise': self._denoise_chunks[self._denoise_index][index]

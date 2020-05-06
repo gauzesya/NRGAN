@@ -111,6 +111,7 @@ def train(conf):
             is_pair=is_pair
             )
     data_num = len(train_dataset)
+    batch_num = np.ceil(data_num / batchsize)
     norm_param = train_dataset.get_norm_param()
     np.save(os.path.join(out_dir, 'norm_param.npy'), norm_param)
     if is_testing:
@@ -170,7 +171,7 @@ def train(conf):
             total_loss_L1 = 0.
 
             for dl in progressbar(
-                    train_loader, decostr='epoch {:03d}'.format(epoch)):
+                    train_loader, obj_len=batch_num, decostr='epoch {:03d}'.format(epoch)):
 
                 netG.train()
                 netD.train()

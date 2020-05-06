@@ -6,7 +6,7 @@ import copy
 
 class progressbar(object):
 
-    def __init__(self, obj, width_proportion=1, decostr=None):
+    def __init__(self, obj, obj_len=None, width_proportion=1, decostr=None):
         assert(hasattr(obj, '__iter__'))
         self._obj = iter(copy.deepcopy(obj))
         assert(width_proportion <= 1 and width_proportion > 0)
@@ -15,7 +15,7 @@ class progressbar(object):
             assert(type(decostr) is str)
         self._decostr = decostr
         self._i = 0
-        self._len = sum([1 for _ in obj])
+        self._len = sum([1 for _ in obj]) if obj_len is None else obj_len
 
 
     def __iter__(self):
