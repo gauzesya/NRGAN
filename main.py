@@ -73,6 +73,8 @@ def train(conf):
     lr_g = conf['lr_g']
     lr_d = conf['lr_d']
     l1_ratio = conf['l1_ratio']
+    train_g_ratio = conf['train_g_ratio']
+    train_d_ratio = conf['train_d_ratio']
     save_interval = conf['save_interval']
     n_sample = conf['n_sample']
     n_overlap = conf['n_overlap']
@@ -216,9 +218,10 @@ def train(conf):
                 loss_D += (fake_D**2).mean() / 2
                 loss_D += ((real_D-1)**2).mean() / 2
                 total_loss_D += loss_D.to('cpu').detach().numpy() * bs
-                netD.zero_grad()
-                loss_D.backward()
-                optD.step()
+                if train_d_ratio >= np.random.rand(1)[0]:
+                    netD.zero_grad()
+                    loss_D.backward()
+                    optD.step()
 
                 # Generator training
                 fake = netG(noised)
@@ -231,10 +234,10 @@ def train(conf):
                 loss_L1 = F.l1_loss(noised, fake).mean()
                 total_loss_L1 += loss_L1.to('cpu').detach().numpy() * bs
                 loss_L1 = l1_ratio * loss_L1
-
-                netG.zero_grad()
-                (loss_G + loss_L1).backward()
-                optG.step()
+                if train_g_ratio >= np.random.rand(1)[0]:
+                    netG.zero_grad()
+                    (loss_G + loss_L1).backward()
+                    optG.step()
 
             # compute mean loss and print
             total_loss_D /= data_num
@@ -356,6 +359,10 @@ if __name__=='__main__':
             help='Learning rate of discriminator')
     parser.add_argument('--l1_ratio', type=float, default=1,
             help='Ratio of L1 norm for generator training')
+    parser.add_argument('--train_g_ratio', type=float, default=1.0,
+            help='Ratio of generator training')
+    parser.add_argument('--train_d_ratio', type=float, default=1.0,
+            help='Ratio of discriminator training')
     parser.add_argument('--load_epochs', type=int, default=-1,
             help='The model with the epoch is chosen for re-training (-1 means the latest)')
     parser.add_argument('--n_test_data', type=int, default=5,
