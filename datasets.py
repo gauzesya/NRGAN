@@ -24,30 +24,32 @@ class NoisedAndDenoiseAudioDataset(torch.utils.data.Dataset):
             is_pair=False
             ):
 
+        self._noised_label = noised_label
+        self._denoise_label = denoise_label
         self._n_sample = n_sample
         self._n_overlap = n_overlap
         self._fs = fs
         self._is_pair = is_pair
 
-        self._noised_data, noised_max, noised_min = self._make_data(noised_label)
+        noised_data, noised_max, noised_min = self._make_data(self._noised_label)
         self._noised_chunks = self._extract_chunks(
-                self._noised_data,
+                noised_data,
                 noised_max,
                 noised_min
                 )
         self._noised_chunks_len = self._noised_chunks.shape[0]
 
         if denoise_label is not None:
-            self._denoise_data, denoise_max, denoise_min = self._make_data(denoise_label)
+            denoise_data, denoise_max, denoise_min = self._make_data(self._denoise_label)
             self._denoise_chunks = self._extract_chunks(
-                    self._denoise_data,
+                    denoise_data,
                     denoise_max,
                     denoise_min
                     )
 
             if self._is_pair: # pair check
-                assert len(self._noised_data)==len(self._denoise_data)
-                for noised, denoise in zip(self._noised_data, self._denoise_data):
+                assert len(noised_data)==len(denoise_data)
+                for noised, denoise in zip(noised_data, denoise_data):
                     assert noised['len']==denoise['len']
                 print('pair check passed')
 
@@ -63,7 +65,6 @@ class NoisedAndDenoiseAudioDataset(torch.utils.data.Dataset):
                 self._denoise_index = np.arange(self._chunks_len) % self._denoise_chunks_len
 
         else:
-            self._denoise_data = None
             denoise_max = 0.0
             denoise_min = 0.0
             self._denoise_chunks = None
@@ -79,7 +80,7 @@ class NoisedAndDenoiseAudioDataset(torch.utils.data.Dataset):
 
     def shuffle_data(self):
         self._noised_index = np.random.permutation(self._chunks_len) % self._noised_chunks_len
-        if self._denoise_data is not None:
+        if self._denoise_chunks is not None:
             if self._is_pair:
                 self._denoise_index = self._noised_index
             else:
@@ -94,9 +95,9 @@ class NoisedAndDenoiseAudioDataset(torch.utils.data.Dataset):
         assert(data_type=='noised' or data_type=='denoise')
 
         if data_type=='noised':
-            data = self._noised_data
+            data = self._make_data(self._noised_label)
         elif data_type=='denoise':
-            data = self._denoise_data
+            data = self._make_data(self._denoise_label)
 
         if is_shuffle is True:
             data = np.random.permutation(data)
