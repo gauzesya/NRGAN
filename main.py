@@ -75,6 +75,7 @@ def train(conf):
     l1_ratio = conf['l1_ratio']
     train_g_ratio = conf['train_g_ratio']
     train_d_ratio = conf['train_d_ratio']
+    flip_ratio = conf['flip_ratio']
     save_interval = conf['save_interval']
     n_sample = conf['n_sample']
     n_overlap = conf['n_overlap']
@@ -208,6 +209,7 @@ def train(conf):
 
                 # Discriminator training
                 loss_D = 0.
+                loss_D_flip = 0.
                 fake = netG(noised)
                 if is_pair:
                     fake_D = netD(fake, noised)
@@ -217,10 +219,17 @@ def train(conf):
                     real_D = netD(denoise)
                 loss_D += (fake_D**2).mean() / 2
                 loss_D += ((real_D-1)**2).mean() / 2
+                loss_D_flip += (real_D**2).mean() / 2
+                loss_D_flip += ((fake_D-1)**2).mean() / 2
+
+                # use non-flipping loss as total loss even if flipped
                 total_loss_D += loss_D.to('cpu').detach().numpy() * bs
                 if train_d_ratio >= np.random.rand(1)[0]:
                     netD.zero_grad()
-                    loss_D.backward()
+                    if flip_ratio >= np.random.rand(1)[0]:
+                        loss_D_flip.backward()
+                    else:
+                        loss_D.backward()
                     optD.step()
 
                 # Generator training
@@ -363,6 +372,8 @@ if __name__=='__main__':
             help='Ratio of generator training')
     parser.add_argument('--train_d_ratio', type=float, default=1.0,
             help='Ratio of discriminator training')
+    parser.add_argument('--flip_ratio', type=float, default=0,
+            help='Ratio of flipping (change discriminator label)')
     parser.add_argument('--load_epochs', type=int, default=-1,
             help='The model with the epoch is chosen for re-training (-1 means the latest)')
     parser.add_argument('--n_test_data', type=int, default=5,
