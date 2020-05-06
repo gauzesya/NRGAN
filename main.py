@@ -209,7 +209,7 @@ def train(conf):
                 fake = netG(noised)
                 if is_pair:
                     fake_D = netD(fake, noised)
-                    real_D = netD(fake, noised)
+                    real_D = netD(denoise, noised)
                 else:
                     fake_D = netD(fake)
                     real_D = netD(denoise)
