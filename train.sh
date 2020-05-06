@@ -4,6 +4,8 @@
 python main.py \
   --n_epochs 50 \
   --batchsize 4 \
+  --opt_g adam \
+  --opt_d adam \
   --lr_g 1e-3 \
   --lr_d 1e-4 \
   --l1_ratio 1 \
@@ -20,6 +22,8 @@ TRAIN
 python main.py \
   --n_epochs 5 \
   --batchsize 4 \
+  --opt_g adam \
+  --opt_d adam \
   --lr_g 1e-3 \
   --lr_d 1e-4 \
   --l1_ratio 1 \
@@ -48,13 +52,3 @@ python main.py \
   --save_interval 5 \
   --is_pair
 RE_TRAIN
-
-<<TEST
-python main.py \
-  --only_test \
-  --is_shuffle_test \
-  --noised_label_te data/label/test_noised \
-  --load_epochs 5 \
-  --exp_dir exp \
-  --test_out_dir test
-TEST

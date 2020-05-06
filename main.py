@@ -68,6 +68,8 @@ def train(conf):
     # parameters
     n_epochs = conf['n_epochs']
     batchsize = conf['batchsize']
+    opt_g = conf['opt_g']
+    opt_d = conf['opt_d']
     lr_g = conf['lr_g']
     lr_d = conf['lr_d']
     l1_ratio = conf['l1_ratio']
@@ -75,6 +77,7 @@ def train(conf):
     n_sample = conf['n_sample']
     n_overlap = conf['n_overlap']
     load_epochs = conf['load_epochs']
+    use_new_opt = conf['use_new_opt']
 
     noised_label_tr = conf['noised_label_tr']
     denoise_label_tr = conf['denoise_label_tr']
@@ -133,16 +136,34 @@ def train(conf):
     netD = netD.to(device)
 
     # create optimiser
-    optG = torch.optim.Adam(netG.parameters(), lr=lr_g, betas=(0.5, 0.9))
-    optD = torch.optim.Adam(netD.parameters(), lr=lr_d, betas=(0.5, 0.9))
+    assert opt_g in ['adam', 'sgd', 'rms']
+    assert opt_d in ['adam', 'sgd', 'rms']
+
+    if opt_g =='adam':
+        optG = torch.optim.Adam(netG.parameters(), lr=lr_g)
+    elif opt_g == 'sgd':
+        optG = torch.optim.SGD(netG.parameters(), lr=lr_g, momentum=0.9)
+    elif opt_g == 'rms':
+        optG = torch.optim.RMSprop(netG.parameters(), lr=lr_g, momentum=0.9)
+
+    if opt_d =='adam':
+        optD = torch.optim.Adam(netD.parameters(), lr=lr_d)
+    elif opt_d == 'sgd':
+        optD = torch.optim.SGD(netD.parameters(), lr=lr_d, momentum=0.9)
+    elif opt_d == 'rms':
+        optD = torch.optim.RMSprop(netD.parameters(), lr=lr_d, momentum=0.9)
 
     # load models (if exists)
     if model_dir is not None:
         netG.load_state_dict(torch.load(os.path.join(model_dir, "netG.pt")))
-        optG.load_state_dict(torch.load(os.path.join(model_dir, "optG.pt")))
         netD.load_state_dict(torch.load(os.path.join(model_dir, "netD.pt")))
-        optD.load_state_dict(torch.load(os.path.join(model_dir, "optD.pt")))
-        print('model loaded from {}'.format(model_dir))
+        print('models loaded from {}'.format(model_dir))
+        if use_new_opt is not True:
+            optG.load_state_dict(torch.load(os.path.join(model_dir, "optG.pt")))
+            optD.load_state_dict(torch.load(os.path.join(model_dir, "optD.pt")))
+            print('Optimisers loaded from {}'.format(model_dir))
+        else:
+            print('Using new optimisers')
     else:
         print('new model created')
 
@@ -325,20 +346,26 @@ if __name__=='__main__':
             help='The number of training epochs')
     parser.add_argument('--batchsize', type=int, default=32,
             help='The size of batch')
+    parser.add_argument('--opt_g', type=str, default='adam',
+            help='Optimiser for generator (adam, sgd, rms)')
+    parser.add_argument('--opt_d', type=str, default='adam',
+            help='Optimiser for discriminator (adam, sgd, rms)')
     parser.add_argument('--lr_g', type=float, default=1e-4,
             help='Learning rate of generator')
     parser.add_argument('--lr_d', type=float, default=1e-5,
             help='Learning rate of discriminator')
     parser.add_argument('--l1_ratio', type=float, default=1,
             help='Ratio of L1 norm for generator training')
-    parser.add_argument('--only_test', action='store_true',
-            help='Can be used for only denoising from a trained model')
     parser.add_argument('--load_epochs', type=int, default=-1,
             help='The model with the epoch is chosen for re-training (-1 means the latest)')
     parser.add_argument('--n_test_data', type=int, default=5,
             help='The number of wave file generated in the test')
     parser.add_argument('--is_shuffle_test', action='store_true',
             help='Whether data is shuffled during testing')
+    parser.add_argument('--use_new_opt', action='store_true',
+            help='New optimiser is used even in re-training')
+    parser.add_argument('--only_test', action='store_true',
+            help='Can be used for only denoising from a trained model')
 
     # For dataset 
     parser.add_argument('--n_sample', type=int, default=16384,

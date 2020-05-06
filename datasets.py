@@ -95,9 +95,9 @@ class NoisedAndDenoiseAudioDataset(torch.utils.data.Dataset):
         assert(data_type=='noised' or data_type=='denoise')
 
         if data_type=='noised':
-            data = self._make_data(self._noised_label)
+            data, _, _ = self._make_data(self._noised_label)
         elif data_type=='denoise':
-            data = self._make_data(self._denoise_label)
+            data, _, _ = self._make_data(self._denoise_label)
 
         if is_shuffle is True:
             data = np.random.permutation(data)
