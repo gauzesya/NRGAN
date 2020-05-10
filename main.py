@@ -240,7 +240,10 @@ def train(conf):
                     fake_D = netD(fake)
                 loss_G = ((fake_D-1)**2).mean() / 2
                 total_loss_G += loss_G.to('cpu').detach().numpy() * bs
-                loss_L1 = F.l1_loss(noised, fake).mean()
+                if is_pair:
+                    loss_L1 = F.l1_loss(fake, denoise).mean()
+                else:
+                    loss_L1 = F.l1_loss(noised, fake).mean()
                 total_loss_L1 += loss_L1.to('cpu').detach().numpy() * bs
                 loss_L1 = l1_ratio * loss_L1
                 if train_g_ratio >= np.random.rand(1)[0]:
