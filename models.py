@@ -133,6 +133,7 @@ class Generator(nn.Module):
         #else:
         #    z = torch.zeros(sc11.shape).to(self.device)
         #x = torch.cat((sc11, z), dim=1)
+        x = sc11
 
         # up-sampling
         x = self.us1(x)
