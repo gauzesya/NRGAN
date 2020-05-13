@@ -22,27 +22,32 @@ from datasets import NoisedAndDenoiseAudioDataset
 def test(conf):
 
 
+    noised_label_tr = conf['noised_label_tr']
+    denoise_label_tr = conf['denoise_label_tr']
     noised_label_te = conf['noised_label_te']
     denoise_label_te = conf['denoise_label_te']
 
     n_test_data = conf['n_test_data']
     is_shuffle_test = conf['is_shuffle_test']
 
-    exp_dir = conf['exp_dir']
     test_out_dir = conf['test_out_dir']
 
-
-    # load experiment
-    norm_param = np.load(os.path.join(exp_dir, 'norm_param.npy'))
-
-    # load previous conf
     n_sample = conf['n_sample']
     n_overlap = conf['n_overlap']
 
     # load dataset
+    train_dataset = NoisedAndDenoiseAudioDataset(
+            noised_label_tr,
+            denoise_label_tr,
+            n_sample=n_sample,
+            n_overlap=n_overlap
+            )
+    norm_param = train_dataset.get_norm_param()
     test_dataset = NoisedAndDenoiseAudioDataset(
             noised_label_te,
-            denoise_label_te
+            denoise_label_te,
+            n_sample=n_sample,
+            n_overlap=n_overlap
             )
 
     # device (cpu or cuda)
@@ -82,14 +87,16 @@ if __name__=='__main__':
             help='The number of sample')
     parser.add_argument('--n_overlap', type=int, default=8192,
             help='The overlap number')
+    parser.add_argument('--noised_label_tr', type=str,
+            help='The label path of noised data for training')
+    parser.add_argument('--denoise_label_tr', type=str,
+            help='The label path of denoised data for training')
     parser.add_argument('--noised_label_te', type=str, default=None,
             help='The label path of noised data for testing')
     parser.add_argument('--denoise_label_te', type=str,
             help='The label path of denoised data for testing')
 
     # For experiments
-    parser.add_argument('--exp_dir', type=str, default=None,
-            help='The directory path that contains experiments')
     parser.add_argument('--test_out_dir', type=str, default='testdir',
             help='The directory path for saving wav')
     args = parser.parse_args()
