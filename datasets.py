@@ -148,6 +148,37 @@ class NoisedAndDenoiseAudioDataset(torch.utils.data.Dataset):
             sf.write(output_path, denoised, self._fs)
             
 
+    # function for generationg baseline waveform
+    def save_baseline_wav(self, output_dir, n_data=5, is_shuffle=False, decostr='', norm_param=None):
+
+        # denoise_model is function that recieves `chuncks' and returns numpy array of the same size
+        os.makedirs(output_dir, exist_ok=True)
+        test_data = self.get_test_data_by_file(
+                n_data=n_data,
+                data_type='denoise',
+                is_shuffle=is_shuffle)
+        if norm_param is not None:
+            _, _, denoise_max, denoise_min = norm_param
+        else:
+            _, _, denoise_max, denoise_min = self._norm_param
+
+        for td in test_data:
+            name = td['name']
+            wav_len = td['len']
+            chunks = td['chunks']
+
+            denoised_chunks = chunks
+
+            denoised = []
+            for dc in denoised_chunks:
+                denoised = denoised + list(dc)
+            denoised = np.array(denoised[:wav_len])
+            denoised = self._de_norm(denoised, denoise_max, denoise_min) # denorm
+            denoised = self._de_emphasis(denoised) # deemphasis
+
+            output_path = os.path.join(output_dir, decostr+name)
+            sf.write(output_path, denoised, self._fs)
+
 
     def _make_data(self, label):
 
