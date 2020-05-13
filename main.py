@@ -114,6 +114,8 @@ def train(conf):
     train_dataset = NoisedAndDenoiseAudioDataset(
             noised_label_tr,
             denoise_label_tr,
+            n_sample=n_sample,
+            n_overlap=n_overlap,
             is_pair=is_pair
             )
     data_num = len(train_dataset)
@@ -123,7 +125,9 @@ def train(conf):
     if is_testing:
         test_dataset = NoisedAndDenoiseAudioDataset(
                 noised_label_te,
-                None
+                None,
+                n_sample=n_sample,
+                n_overlap=n_overlap
                 )
     print('dataset loaded')
 
