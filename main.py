@@ -312,8 +312,6 @@ def test(conf):
     # load previous conf
     n_sample = conf['n_sample']
     n_overlap = conf['n_overlap']
-    dropout_prob_g = conf['dropout_prob_g']
-    dropout_prob_d = conf['dropout_prob_d']
 
     # load dataset
     test_dataset = NoisedAndDenoiseAudioDataset(
@@ -327,7 +325,7 @@ def test(conf):
     torch.backends.cudnn.benchmark = True
 
     # set model
-    netG = Generator(dropout_prob_g)
+    netG = Generator(n_sample)
     netG = netG.to(device)
 
     # load models 
