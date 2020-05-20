@@ -1,6 +1,6 @@
 #!/bin/sh
 
-<<TRAIN
+#<<TRAIN
 python main.py \
   --n_epochs 50 \
   --batchsize 32 \
@@ -8,10 +8,10 @@ python main.py \
   --opt_d adam \
   --lr_g 1e-4 \
   --lr_d 1e-4 \
-  --l1_ratio 1 \
+  --l1_ratio 100 \
   --train_g_ratio 1 \
   --train_d_ratio 1 \
-  --flip_ratio 0 \
+  --flip_ratio 0.3 \
   --noised_label_tr data/label/train_noised \
   --denoise_label_tr data/label/train_denoise \
   --noised_label_te data/label/test_noised \
@@ -19,7 +19,7 @@ python main.py \
   --out_dir exp \
   --save_interval 5 \
   --is_pair
-TRAIN
+#TRAIN
 
 <<TRAIN_TINY
 python main.py \

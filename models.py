@@ -95,8 +95,7 @@ class Generator(nn.Module):
         self.ds11 = DownSample(512, 1024, batchnorm=batchnorm)
 
 
-        #self.us1 = UpSample(2048, 512, batchnorm=batchnorm) # for adding noise
-        self.us1 = UpSample(1024, 512, batchnorm=batchnorm)
+        self.us1 = UpSample(2048, 512, batchnorm=batchnorm) # for adding noise
         self.us2 = UpSample(1024, 256, batchnorm=batchnorm)
         self.us3 = UpSample(512, 256, batchnorm=batchnorm)
         self.us4 = UpSample(512, 128, batchnorm=batchnorm)
@@ -127,13 +126,12 @@ class Generator(nn.Module):
         sc10 = self.ds10(sc9)
         sc11 = self.ds11(sc10)
 
-        # adding noise (not adapted)
-        #if self.training:
-        #    z = torch.randn(sc11.shape).to(self.device)
-        #else:
-        #    z = torch.zeros(sc11.shape).to(self.device)
-        #x = torch.cat((sc11, z), dim=1)
-        x = sc11
+        # adding noise
+        if self.training:
+            z = torch.randn(sc11.shape).to(self.device)
+        else:
+            z = torch.zeros(sc11.shape).to(self.device)
+        x = torch.cat((sc11, z), dim=1)
 
         # up-sampling
         x = self.us1(x)
