@@ -4,8 +4,14 @@ NRGAN
 Noise Removal Generative Adversarial Networks
 
 ## Usage
+Example implementation:
 ```
-python main.py
+./train.sh
+```
+
+You can check the help for arguments as
+```
+python main.py -h
 ```
 
 ## Licence
